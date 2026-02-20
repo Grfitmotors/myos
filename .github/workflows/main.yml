@@ -1,0 +1,31 @@
+name: Build MyOS ISO
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Forráskód letöltése
+      uses: actions/checkout@v3
+
+    - name: Eszközök telepítése
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y nasm gcc grub-pc-bin grub-common xorriso
+
+    - name: Fordítás
+      run: |
+        chmod +x build.sh
+        ./build.sh
+
+    - name: ISO feltöltése
+      uses: actions/upload-artifact@v3
+      with:
+        name: myos-iso
+        path: myos.iso
+        retention-days: 30
