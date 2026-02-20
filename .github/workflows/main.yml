@@ -24,7 +24,7 @@ jobs:
         ./build.sh
 
     - name: ISO feltöltése
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: myos-iso
         path: myos.iso
