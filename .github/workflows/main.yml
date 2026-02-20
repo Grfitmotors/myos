@@ -18,10 +18,13 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y nasm gcc grub-pc-bin grub-common xorriso
 
-    - name: Fordítás
+    - name: ZIP kicsomagolása és fordítás
       run: |
+        unzip myos.zip
+        cd myos
         chmod +x build.sh
         ./build.sh
+        cp myos.iso ../myos.iso
 
     - name: ISO feltöltése
       uses: actions/upload-artifact@v4
