@@ -7,28 +7,51 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
     - name: Forráskód letöltése
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Eszközök telepítése
       run: |
         sudo apt-get update
-        sudo apt-get install -y nasm gcc grub-pc-bin grub-common xorriso
+        sudo apt-get install -y nasm gcc xorriso grub-pc-bin grub-common
 
-    - name: ZIP kicsomagolása és fordítás
+    - name: Fordítás és ISO készítés
       run: |
         unzip myos.zip
         cd myos
-        chmod +x build.sh
-        ./build.sh
-        cp myos.iso ../myos.iso
+        CFLAGS="-m32 -std=gnu99 -ffreestanding -O2 -fno-stack-protector -fno-pie -fno-pic -nostdlib -nostdinc -I kernel -I drivers -I fs -I shell"
+        nasm -f elf32 boot/boot.asm -o boot/boot.o
+        nasm -f elf32 kernel/gdt_asm.asm -o kernel/gdt_asm.o
+        nasm -f elf32 kernel/isr.asm -o kernel/isr.o
+        gcc $CFLAGS -c kernel/kernel.c -o kernel/kernel.o
+        gcc $CFLAGS -c kernel/gdt.c -o kernel/gdt.o
+        gcc $CFLAGS -c kernel/idt.c -o kernel/idt.o
+        gcc $CFLAGS -c kernel/pic.c -o kernel/pic.o
+        gcc $CFLAGS -c kernel/vga.c -o kernel/vga.o
+        gcc $CFLAGS -c kernel/stdlib.c -o kernel/stdlib.o
+        gcc $CFLAGS -c kernel/exec.c -o kernel/exec.o
+        gcc $CFLAGS -c drivers/keyboard.c -o drivers/keyboard.o
+        gcc $CFLAGS -c drivers/mouse.c -o drivers/mouse.o
+        gcc $CFLAGS -c drivers/timer.c -o drivers/timer.o
+        gcc $CFLAGS -c fs/fat.c -o fs/fat.o
+        gcc $CFLAGS -c shell/shell.c -o shell/shell.o
+        gcc -m32 -T kernel.ld -ffreestanding -nostdlib -o myos.bin \
+          boot/boot.o kernel/gdt_asm.o kernel/isr.o \
+          kernel/kernel.o kernel/gdt.o kernel/idt.o kernel/pic.o \
+          kernel/vga.o kernel/stdlib.o kernel/exec.o \
+          drivers/keyboard.o drivers/mouse.o drivers/timer.o \
+          fs/fat.o shell/shell.o
+        mkdir -p isodir/boot/grub
+        cp myos.bin isodir/boot/myos.bin
+        printf 'set timeout=5\nset default=0\nmenuentry "MyOS" {\n    multiboot /boot/myos.bin\n    boot\n}\n' > isodir/boot/grub/grub.cfg
+        grub-mkrescue -o myos.iso isodir
 
     - name: ISO feltöltése
       uses: actions/upload-artifact@v4
       with:
         name: myos-iso
-        path: myos.iso
+        path: myos/myos.iso
         retention-days: 30
